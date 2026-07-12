@@ -21,6 +21,10 @@ android {
         versionNameSuffix = "a1"
 
         buildConfigField("String", "CLIENT_INFO_APP_NAME", "\"K-9 Mail\"")
+
+        ndk {
+            abiFilters.add("arm64-v8a")
+        }
     }
 
     androidResources {
@@ -83,7 +87,12 @@ android {
     }
 
     signingConfigs {
-        createSigningConfig(project, SigningType.K9_RELEASE, isUpload = false)
+        create("release") {
+            storeFile = file(System.getenv("SIGN_STORE_FILE") ?: "default-path/keystore.jks")
+            storePassword = System.getenv("SIGN_STORE_PASSWORD") ?: ""
+            keyAlias = System.getenv("SIGN_KEY_ALIAS") ?: ""
+            keyPassword = System.getenv("SIGN_KEY_PASSWORD") ?: ""
+        }
     }
 
     buildTypes {
@@ -91,10 +100,9 @@ android {
             .map(String::toBoolean)
             .orElse(false)
         release {
-            signingConfig = signingConfigs.getByType(SigningType.K9_RELEASE)
+            signingConfig = signingConfigs.getByName("release")
 
-            isMinifyEnabled = !isCI.get()
-            isShrinkResources = !isCI.get()
+            isMinifyEnabled = true
 
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

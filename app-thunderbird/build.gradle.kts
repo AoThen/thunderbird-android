@@ -20,6 +20,10 @@ android {
         versionName = "22.0"
 
         buildConfigField("String", "CLIENT_INFO_APP_NAME", "\"Thunderbird for Android\"")
+
+        ndk {
+            abiFilters.add("arm64-v8a")
+        }
     }
 
     androidResources {
@@ -82,14 +86,12 @@ android {
     }
 
     signingConfigs {
-        val useUploadKey = providers.gradleProperty("tb.useUploadKey")
-            .map(String::toBoolean)
-            .orElse(true)
-            .get()
-
-        createSigningConfig(project, SigningType.TB_RELEASE, isUpload = useUploadKey)
-        createSigningConfig(project, SigningType.TB_BETA, isUpload = useUploadKey)
-        createSigningConfig(project, SigningType.TB_DAILY, isUpload = useUploadKey)
+        create("release") {
+            storeFile = file(System.getenv("SIGN_STORE_FILE") ?: "default-path/keystore.jks")
+            storePassword = System.getenv("SIGN_STORE_PASSWORD") ?: ""
+            keyAlias = System.getenv("SIGN_KEY_ALIAS") ?: ""
+            keyPassword = System.getenv("SIGN_KEY_PASSWORD") ?: ""
+        }
     }
 
     buildTypes {
@@ -97,10 +99,10 @@ android {
             .map(String::toBoolean)
             .orElse(false)
         release {
-            signingConfig = signingConfigs.getByType(SigningType.TB_RELEASE)
+            signingConfig = signingConfigs.getByName("release")
 
-            isMinifyEnabled = !isCI.get()
-            isShrinkResources = !isCI.get()
+            isMinifyEnabled = true
+            isShrinkResources = true
             isDebuggable = false
 
             proguardFiles(
@@ -114,7 +116,7 @@ android {
         create("beta") {
             initWith(getByName("release"))
 
-            signingConfig = signingConfigs.getByType(SigningType.TB_BETA)
+            signingConfig = signingConfigs.getByName("release")
 
             applicationIdSuffix = ".beta"
             versionNameSuffix = "b0"
@@ -136,7 +138,7 @@ android {
         create("daily") {
             initWith(getByName("release"))
 
-            signingConfig = signingConfigs.getByType(SigningType.TB_DAILY)
+            signingConfig = signingConfigs.getByName("release")
 
             applicationIdSuffix = ".daily"
             versionNameSuffix = "a1"

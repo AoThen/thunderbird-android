@@ -1,0 +1,42 @@
+name: Android CI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+
+jobs:
+  build-common:
+    name: Build common code
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 1
+
+      - name: Show disk usage
+        uses: ./.github/actions/disk-usage
+
+      - name: Cleanup disk
+        uses: ./.github/actions/disk-cleanup
+
+      - name: Setup Gradle environment
+        uses: ./.github/actions/setup-gradle
+
+      - name: Prime configuration and dependency cache
+        run: ./gradlew --no-daemon help
+
+      - name: Assemble common
+        run: ./gradlew :app-common:assemble
+
+      - name: Prepare App
+        run: |
+          find . -name "*.apk"  -exec du -h {} \;
+
+      - name: Show disk usage
+        uses: ./.github/actions/disk-usage
