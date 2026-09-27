@@ -171,7 +171,7 @@
     <!--Displayed in the message view screen in front of the number of additional recipients (the ones that are not displayed).-->
     <string name="message_view_additional_recipient_prefix">+</string>
     <!--Displayed in the message view screen if the message was addressed to the user. Make sure this works with 'message_view_recipient_prefix'. In English it's "to me".-->
-    <string name="message_view_me_text">我</string>
+    <string name="message_view_to_me_text">我</string>
     <!--Text of the button that is displayed below the message header when the message body references one or more remote images-->
     <string name="message_view_show_remote_images_action">顯示遠端圖片</string>
     <string name="message_view_no_viewer">無法開啟<xliff:g id="mimetype">%s</xliff:g>。找不到可以開啟該附件的程式。</string>
@@ -773,12 +773,7 @@
     <string name="ac_transfer_finish">請在你的其他裝置上開啟訊息，並輸入設定代碼以完成設定精靈。</string>
     <string name="ac_transfer_show_code">顯示設定代碼</string>
     <string name="ac_transfer_msg_subject">Autocrypt設定訊息</string>
-    <string name="ac_transfer_msg_body">這條訊息包括所有你的舊裝置上的 Autocrypt 設定與你的私鑰。
-
-要在你的新裝置上設定自動加密，請按您的新裝置上的提示操作。
-
-你可以儲存這條訊息，並用作你的私鑰的備份。如果你想這樣做，您應該寫下密碼並安全保管。
-</string>
+    <string name="ac_transfer_msg_body">這條訊息包括所有你的舊裝置上的 Autocrypt 設定與你的私鑰。 要在你的新裝置上設定自動加密，請按您的新裝置上的提示操作。 你可以儲存這條訊息，並用作你的私鑰的備份。如果你想這樣做，您應該寫下密碼並安全保管。</string>
     <string name="ac_transfer_error_send">寄送訊息時出現錯誤。請檢查您的網路連線與外寄伺服器設定。</string>
     <string name="switch_on">開</string>
     <string name="switch_off">關</string>

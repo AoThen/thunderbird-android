@@ -33,6 +33,7 @@ import app.k9mail.feature.launcher.FeatureLauncherActivity
 import app.k9mail.feature.launcher.FeatureLauncherTarget
 import app.k9mail.legacy.message.controller.MessageReference
 import com.fsck.k9.CoreResourceProvider
+import com.fsck.k9.K9.fontSizes
 import com.fsck.k9.Preferences
 import com.fsck.k9.activity.compose.MessageActions
 import com.fsck.k9.controller.MessagingController
@@ -57,12 +58,14 @@ import net.thunderbird.core.android.account.LegacyAccount
 import net.thunderbird.core.android.account.LegacyAccountDto
 import net.thunderbird.core.android.account.LegacyAccountDtoManager
 import net.thunderbird.core.android.common.startup.DatabaseUpgradeInterceptor
+import net.thunderbird.core.featureflag.keys.GeneratedFeatureFlagKey
+import net.thunderbird.core.featureflag.provider.evaluator.MultiFeatureFlagProviderEvaluator
 import net.thunderbird.core.logging.Logger
-import net.thunderbird.core.logging.legacy.Log
 import net.thunderbird.core.preference.GeneralSettingsManager
 import net.thunderbird.core.preference.SplitViewMode
 import net.thunderbird.core.preference.interaction.PostMarkAsUnreadNavigation
 import net.thunderbird.core.preference.interaction.PostRemoveNavigation
+import net.thunderbird.core.preference.storage.Storage
 import net.thunderbird.feature.account.storage.legacy.mapper.LegacyAccountDataMapper
 import net.thunderbird.feature.funding.api.FundingManager
 import net.thunderbird.feature.navigation.drawer.api.NavigationDrawer
@@ -74,6 +77,7 @@ import net.thunderbird.feature.search.legacy.api.MessageSearchField
 import net.thunderbird.feature.search.legacy.api.SearchAttribute
 import net.thunderbird.feature.search.legacy.api.SearchCondition
 import net.thunderbird.feature.search.legacy.serialization.LocalMessageSearchSerializer
+import net.thunderbird.legacy.logging.Log
 import org.koin.android.ext.android.inject
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -116,6 +120,8 @@ open class MessageHomeActivity :
     private val databaseUpgradeInterceptor: DatabaseUpgradeInterceptor by inject()
 
     private val foldableStateObserver: FoldableStateObserver by inject { parametersOf(this) }
+    private val featureFlagProvider: MultiFeatureFlagProviderEvaluator by inject()
+    private val storage: Storage by inject()
 
     private lateinit var actionBar: ActionBar
 
@@ -155,6 +161,9 @@ open class MessageHomeActivity :
     public override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        featureFlagProvider.provide(GeneratedFeatureFlagKey.DISABLE_FONT_SIZE_CONFIG)
+            .onDisabledOrUnavailable { fontSizes.load(storage) }
+
         if (databaseUpgradeInterceptor.checkAndHandleUpgrade(this, intent)) {
             finish()
             return
@@ -189,7 +198,6 @@ open class MessageHomeActivity :
         initializeLayout()
         initializeFragments()
         displayViews()
-        initializeFunding()
         initializeFoldableObserver()
 
         val backPressedCallback = object : OnBackPressedCallback(true) {
@@ -620,6 +628,11 @@ open class MessageHomeActivity :
         if (displayMode != DisplayMode.MESSAGE_VIEW) {
             onMessageListDisplayed()
         }
+    }
+
+    override fun onPostResume() {
+        super.onPostResume()
+        initializeFunding()
     }
 
     override fun onStart() {

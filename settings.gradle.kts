@@ -43,6 +43,12 @@ dependencyResolutionManagement {
                 includeGroup("com.github.cketti")
             }
         }
+        maven(url = "https://central.sonatype.com/repository/maven-snapshots/") {
+            mavenContent {
+                snapshotsOnly()
+                includeGroupAndSubgroups("net.thunderbird.components")
+            }
+        }
         mavenCentral()
     }
 }
@@ -119,7 +125,9 @@ include(
 include(
     ":feature:mail:account:api",
     ":feature:mail:folder:api",
-    ":feature:mail:message:composer",
+    ":feature:mail:message:api",
+    ":feature:mail:message:composer:api",
+    ":feature:mail:message:composer:internal",
     ":feature:mail:message:list:api",
     ":feature:mail:message:list:internal",
     ":feature:mail:message:export:api",
@@ -189,14 +197,12 @@ include(
     ":core:logging:config",
     ":core:logging:impl-composite",
     ":core:logging:impl-console",
-    ":core:logging:impl-legacy",
     ":core:logging:impl-file",
     ":core:logging:testing",
     ":core:file",
     ":core:mail:mailserver",
     ":core:preference:api",
     ":core:preference:impl",
-    ":core:outcome",
     ":core:testing",
     ":core:validation",
 )
@@ -209,6 +215,7 @@ include(
     ":core:android:network",
     ":core:android:permissions",
     ":core:android:testing",
+    ":core:android:webkit",
 )
 
 include(
@@ -250,6 +257,7 @@ include(
 )
 
 include(
+    ":legacy:logging",
     ":legacy:common",
     ":legacy:core",
     ":legacy:crypto-openpgp",
@@ -281,6 +289,8 @@ include(
 include(
     ":library:html-cleaner",
     ":library:token-auto-complete",
+    ":library:pii-safe:annotations",
+    ":library:pii-safe:compiler-plugin",
 )
 
 include(
@@ -310,3 +320,4 @@ check(JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
     """.trimIndent()
 }
 include(":feature:changelog:internal")
+include(":feature:funding:common")

@@ -16,7 +16,9 @@ kotlin {
         compileSdk = ThunderbirdProjectConfig.Android.sdkCompile
         minSdk = ThunderbirdProjectConfig.Android.sdkMin
 
-        withHostTest { }
+        withHostTest {
+            isIncludeAndroidResources = true
+        }
 
         compilerOptions {
             jvmTarget.set(ThunderbirdProjectConfig.Compiler.jvmTarget)
@@ -34,6 +36,10 @@ kotlin {
             implementation(project.dependencies.platform(libs.kotlin.bom))
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.bundles.shared.kmp.common)
+
+            if (rootProject.name != "components") {
+                implementation(libs.bundles.shared.tfa.components)
+            }
         }
 
         commonTest.dependencies {
@@ -59,6 +65,10 @@ kotlin {
 }
 
 configureKotlinJavaCompatibility()
+
+tasks.withType<Test>().configureEach {
+    jvmArgs(ThunderbirdProjectConfig.Testing.robolectricJvmArgs)
+}
 
 tasks.register("testsOnCi") {
     dependsOn(

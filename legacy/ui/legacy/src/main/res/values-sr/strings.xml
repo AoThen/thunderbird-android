@@ -467,7 +467,7 @@
     <string name="integrated_inbox_detail">Све поруке у обједињеним фолдерима</string>
     <string name="folder_settings_include_in_integrated_inbox_label">Обједини</string>
     <string name="account_settings_no_folder_selected">Ниједан</string>
-    <string name="account_settings_automatic_special_folder">Аутоматски (%s) </string>
+    <string name="account_settings_automatic_special_folder">Аутоматски (%s)</string>
     <string name="font_size_settings_title">Величина фонта</string>
     <string name="font_size_settings_description">Конфигуришите величину фонта</string>
     <string name="font_size_message_list">Листе порука</string>
@@ -799,7 +799,7 @@
     <string name="debug_export_logs_failure">Извоз није успео.</string>
     <string name="message_view_recipients_format">за <xliff:g id="recipients">%s</xliff:g></string>
     <string name="message_view_additional_recipient_prefix">+</string>
-    <string name="message_view_me_text">мене</string>
+    <string name="message_view_to_me_text">мене</string>
     <string name="general_settings_contact_name_color_label">Боја имена контакта</string>
     <string name="general_settings_post_remove_action_title">Након брисања или премештања поруке</string>
     <string name="general_settings_post_remove_action_return_to_list">Врати се на листу порука</string>

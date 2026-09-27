@@ -33,7 +33,7 @@ import net.thunderbird.core.android.account.AccountDefaultsProvider.Companion.NO
 import net.thunderbird.core.android.account.LegacyAccountDto
 import net.thunderbird.core.android.contact.ContactIntentHelper
 import net.thunderbird.core.common.mail.Flag
-import net.thunderbird.core.logging.legacy.Log
+import net.thunderbird.legacy.logging.Log
 import org.openintents.openpgp.OpenPgpApiManager
 import org.openintents.openpgp.OpenPgpApiManager.OpenPgpApiManagerCallback
 import org.openintents.openpgp.OpenPgpApiManager.OpenPgpProviderError
@@ -93,6 +93,8 @@ class RecipientPresenter(
 
     private val allRecipients: List<Recipient>
         get() = with(recipientMvpView) { toRecipients + ccRecipients + bccRecipients }
+
+    val isRecipientExpanderExpanded: Boolean get() = recipientMvpView.isCcVisible && recipientMvpView.isBccVisible
 
     private val openPgpCallback = object : OpenPgpApiManagerCallback {
         override fun onOpenPgpProviderStatusChanged() {
@@ -390,7 +392,7 @@ class RecipientPresenter(
     }
 
     private fun updateRecipientExpanderVisibility() {
-        val notBothAreVisible = !(recipientMvpView.isCcVisible && recipientMvpView.isBccVisible)
+        val notBothAreVisible = !isRecipientExpanderExpanded
         recipientMvpView.setRecipientExpanderVisibility(notBothAreVisible)
     }
 
@@ -549,9 +551,11 @@ class RecipientPresenter(
                 val recipientType = requestCode.toRecipientType()
                 addRecipientFromContactUri(recipientType, data.data)
             }
+
             OPENPGP_USER_INTERACTION -> {
                 openPgpApiManager.onUserInteractionResult()
             }
+
             REQUEST_CODE_AUTOCRYPT -> {
                 asyncUpdateCryptoStatus()
             }
@@ -569,14 +573,17 @@ class RecipientPresenter(
             OpenPgpProviderState.UNCONFIGURED -> {
                 Log.e("click on crypto status while unconfigured - this should not really happen?!")
             }
+
             OpenPgpProviderState.OK -> {
                 toggleEncryptionState(false)
             }
+
             OpenPgpProviderState.UI_REQUIRED -> {
                 // TODO show openpgp settings
                 val pendingIntent = openPgpApiManager.userInteractionPendingIntent
                 recipientMvpView.launchUserInteractionPendingIntent(pendingIntent, OPENPGP_USER_INTERACTION)
             }
+
             OpenPgpProviderState.UNINITIALIZED, OpenPgpProviderState.ERROR -> {
                 openPgpApiManager.refreshConnection()
             }
@@ -743,9 +750,11 @@ class RecipientPresenter(
             currentCryptoMode == CryptoMode.SIGN_ONLY -> {
                 recipientMvpView.showOpenPgpSignOnlyDialog(false)
             }
+
             isForceTextMessageFormat -> {
                 recipientMvpView.showOpenPgpInlineDialog(false)
             }
+
             else -> {
                 error("This icon should not be clickable while no special mode is active!")
             }

@@ -1,7 +1,11 @@
 package com.fsck.k9.activity.setup
 
 import com.fsck.k9.EmailAddressValidator
+import com.fsck.k9.activity.account.identity.LegacyIdentitySignatureWebViewConfigurator
 import com.fsck.k9.activity.setup.AccountSetupCompositionContract.Effect
+import com.fsck.k9.activity.setup.AccountSetupCompositionContract.Effect.Back
+import com.fsck.k9.activity.setup.AccountSetupCompositionContract.Effect.DoneUpdatingAccount
+import com.fsck.k9.activity.setup.AccountSetupCompositionContract.Effect.ToggleSaveButtonEnabled
 import com.fsck.k9.activity.setup.AccountSetupCompositionContract.Event
 import com.fsck.k9.activity.setup.AccountSetupCompositionContract.State
 import com.fsck.k9.ui.R
@@ -11,10 +15,11 @@ import net.thunderbird.core.android.account.LegacyAccountManager
 import net.thunderbird.core.common.resources.StringsResourceManager
 import net.thunderbird.core.ui.contract.mvi.BaseViewModel
 
-class AccountSetupCompositionViewModel(
+internal class AccountSetupCompositionViewModel(
     private val legacyAccountManager: LegacyAccountManager,
     private val resources: StringsResourceManager,
     private val emailAddressValidator: EmailAddressValidator,
+    private val legacyIdentitySignatureWebViewConfigurator: LegacyIdentitySignatureWebViewConfigurator,
     accountUuid: String,
 ) : BaseViewModel<State, Event, Effect>(initialState = State.EMPTY) {
     private val signatureLocations = persistentListOf(
@@ -38,9 +43,9 @@ class AccountSetupCompositionViewModel(
             is Event.SenderEmailChange -> updateState { state ->
                 account = account.copy(email = event.email)
                 if (emailAddressValidator.isValidAddressOnly(event.email)) {
-                    emitEffect(Effect.ToggleSaveButtonEnabled(true))
+                    emitEffect(ToggleSaveButtonEnabled(true))
                 } else {
-                    emitEffect(Effect.ToggleSaveButtonEnabled(false))
+                    emitEffect(ToggleSaveButtonEnabled(false))
                 }
                 state.copy(senderEmail = account.email)
             }
@@ -62,17 +67,22 @@ class AccountSetupCompositionViewModel(
 
             is Event.SignatureChange -> updateState { state ->
                 account = account.copy(signature = event.signature)
-                state.copy(signature = account.signature ?: "")
+                state.copy(
+                    signature = account.signature ?: "",
+                    signaturePreviewHtmlText = account.signature.buildSignatureHtmlPreviewText(),
+                )
             }
 
             is Event.SavePressed -> {
                 saveAccount()
-                emitEffect(Effect.DoneUpdatingAccount)
+                emitEffect(DoneUpdatingAccount)
             }
 
             is Event.BackPressed -> {
-                emitEffect(Effect.Back)
+                emitEffect(Back)
             }
+
+            is Event.OnFormatSignatureAsHtmlCheck -> handleOnFormatSignatureAsHtmlCheck(event)
         }
     }
 
@@ -90,11 +100,26 @@ class AccountSetupCompositionViewModel(
                 } else {
                     Pair(2, resources.stringResource(R.string.account_settings_signature__location_after_quoted_text))
                 },
+                saveSignatureAsHtml = account.signatureIsHtml,
+                signaturePreviewHtmlText = account.signature.buildSignatureHtmlPreviewText(),
+                webViewConfig = legacyIdentitySignatureWebViewConfigurator.buildWebConfig(),
             )
         }
     }
 
     private fun saveAccount() {
         legacyAccountManager.saveAccount(account)
+    }
+
+    private fun handleOnFormatSignatureAsHtmlCheck(event: Event.OnFormatSignatureAsHtmlCheck) {
+        account = account.copy(signatureIsHtml = event.checked)
+        updateState { it.copy(saveSignatureAsHtml = event.checked) }
+    }
+
+    private fun String?.buildSignatureHtmlPreviewText(): String? {
+        val previewContent = takeUnless { it.isNullOrBlank() }
+            ?: resources.stringResource(R.string.account_settings_signature_preview_empty)
+
+        return legacyIdentitySignatureWebViewConfigurator.buildSignatureHtmlPreviewText(signature = previewContent)
     }
 }

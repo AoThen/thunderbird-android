@@ -24,13 +24,12 @@ dependencies {
     implementation(projects.core.android.account)
     implementation(projects.feature.mail.account.api)
     implementation(projects.core.file)
-    implementation(projects.core.outcome)
     implementation(projects.core.validation)
 
     implementation(projects.core.ui.setting.api)
     implementation(projects.core.ui.setting.component)
 
-    implementation(projects.core.logging.implLegacy)
+    implementation(projects.legacy.logging)
     implementation(projects.core.ui.contract)
     implementation(projects.core.ui.navigation)
     implementation(projects.core.common)

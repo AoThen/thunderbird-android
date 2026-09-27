@@ -51,6 +51,7 @@ kotlin {
             implementation(libs.jetbrains.compose.components.ui.preview)
 
             if (!isComponentsBuild) {
+                implementation(libs.bundles.shared.tfa.components)
                 implementation(libs.tb.mobile.components.ui.bolt)
             }
         }
@@ -88,6 +89,10 @@ kotlin {
 }
 
 configureKotlinJavaCompatibility()
+
+tasks.withType<Test>().configureEach {
+    jvmArgs(ThunderbirdProjectConfig.Testing.robolectricJvmArgs)
+}
 
 tasks.register("testsOnCi") {
     dependsOn(

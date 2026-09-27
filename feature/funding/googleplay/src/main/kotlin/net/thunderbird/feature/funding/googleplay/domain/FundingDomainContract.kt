@@ -2,7 +2,7 @@ package net.thunderbird.feature.funding.googleplay.domain
 
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.Flow
-import net.thunderbird.core.outcome.Outcome
+import net.thunderbird.components.core.outcome.Outcome
 import net.thunderbird.feature.funding.googleplay.domain.entity.AvailableContributions
 import net.thunderbird.feature.funding.googleplay.domain.entity.ContributionId
 import net.thunderbird.feature.funding.googleplay.domain.entity.ContributionPreselection
@@ -85,7 +85,7 @@ internal interface FundingDomainContract {
         /**
          * Get purchased contributions.
          *
-         * @return Outcome flow containing a list of recurring contributions or an error if the operation fails.
+         * @return Outcome flow containing a list of purchased contributions or an error if the operation fails.
          */
         fun getAllPurchased(): Flow<Outcome<List<PurchasedContribution>, ContributionError>>
 

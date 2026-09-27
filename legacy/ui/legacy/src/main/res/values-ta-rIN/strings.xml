@@ -58,7 +58,7 @@
     <!--Shown in place of the subject when a message has no subject. Showing this in parentheses is customary.-->
     <string name="general_no_subject">(தலைப்பு இல்லை)</string>
     <string name="general_no_sender">அனுப்புநர் இல்லை</string>
-    <string name="status_loading_more">அஞ்சல் ஏற்றப்படுகிறது \u2026</string>
+    <string name="status_loading_more">அஞ்சல் ஏற்றப்படுகிறது …</string>
     <string name="status_network_error">இணைப்பு பிழை</string>
     <string name="status_invalid_id_error">அஞ்சல் கிடைக்கவில்லை</string>
     <string name="load_more_messages_fmt">&lt;Xliff வரை ஏற்றவும்: g ஐடி = \"messages_to_load\"&gt;%d &lt;/xliff: g&gt; மேலும்</string>
@@ -67,7 +67,7 @@
     <string name="notification_action_delete">அழி</string>
     <string name="notification_action_archive">காப்பகம்</string>
     <string name="notification_action_spam">பயனற்றது</string>
-    <string name="notification_certificate_error_title"><xliff:g id="account">%s</xliff:g> சான்றிதழ் பிழை </string>
+    <string name="notification_certificate_error_title"><xliff:g id="account">%s</xliff:g> சான்றிதழ் பிழை</string>
     <string name="notification_certificate_error_text">வழங்கியை சோதி</string>
     <!--Title of an error notification that is displayed when creating a notification for a new message has failed-->
     <!--Body of an error notification that is displayed when creating a notification for a new message has failed-->
@@ -239,7 +239,7 @@
     <string name="notification_channel_miscellaneous_description">பிழைகள் போன்ற இதர அறிவிப்புகள்.</string>
     <string name="compose_error_incomplete_recipient">பெறுநரின் புலத்தில் முழுமையற்ற உள்ளீடு உள்ளது!</string>
     <string name="general_settings_right_swipe_title">வலது ச்வைப்</string>
-    <string name="message_view_me_text">நான்</string>
+    <string name="message_view_to_me_text">நான்</string>
     <string name="global_settings_show_correspondent_names_summary">நிருபர் பெயர்களை அவர்களின் மின்னஞ்சல் முகவரிகளைக் காட்டிலும் காண்பி</string>
     <string name="general_settings_message_list_density_title">அடர்த்தி</string>
     <string name="global_settings_privacy_hide_useragent">அஞ்சல் கிளையண்டை மறைக்கவும்</string>

@@ -11,10 +11,12 @@ dependencies {
     api(projects.core.ui.legacy.designsystem)
 
     implementation(projects.legacy.core)
+    implementation(projects.legacy.logging)
     implementation(projects.feature.mail.account.api)
     implementation(projects.mail.common)
     implementation(projects.uiUtils.toolbarBottomSheet)
     implementation(projects.core.android.contact)
+    implementation(projects.core.android.webkit)
     implementation(projects.feature.changelog.internal)
 
     implementation(projects.core.featureflag)
@@ -36,7 +38,7 @@ dependencies {
     implementation(projects.feature.settings.import)
     implementation(projects.feature.telemetry.api)
     implementation(projects.feature.mail.message.list.api)
-    implementation(projects.feature.mail.message.composer)
+    implementation(projects.feature.mail.message.composer.api)
     implementation(projects.feature.mail.message.export.api)
     implementation(projects.feature.mail.message.reader.api)
 
@@ -58,7 +60,6 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.localbroadcastmanager)
     implementation(libs.androidx.swiperefreshlayout)
-    implementation(libs.ckchangelog.core)
     implementation(projects.library.tokenAutoComplete)
     implementation(libs.safeContentResolver)
     implementation(libs.searchPreference)
