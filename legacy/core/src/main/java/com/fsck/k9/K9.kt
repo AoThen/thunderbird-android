@@ -178,7 +178,7 @@ object K9 : KoinComponent {
         pgpSignOnlyDialogCounter = storage.getInt("pgpSignOnlyDialogCounter", 0)
 
         if (telemetryManager.isTelemetryFeatureIncluded()) {
-            isTelemetryEnabled = storage.getBoolean("enableTelemetry", true)
+            isTelemetryEnabled = storage.getBoolean("enableTelemetry", false)
         }
 
         fundingReminderReferenceTimestamp = storage.getLong("fundingReminderReferenceTimestamp", 0)

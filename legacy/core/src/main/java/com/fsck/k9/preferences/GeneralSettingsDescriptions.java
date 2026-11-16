@@ -351,7 +351,7 @@ class GeneralSettingsDescriptions {
         // TODO: Add a way to properly support feature-specific settings.
         if (telemetryManager.isTelemetryFeatureIncluded()) {
             s.put("enableTelemetry", Settings.versions(
-                new V(97, new BooleanSetting(true))
+                new V(97, new BooleanSetting(false))
             ));
         }
 
