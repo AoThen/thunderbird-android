@@ -1,6 +1,5 @@
 package com.fsck.k9.notification
 
-import app.k9mail.legacy.mailstore.MessageStoreManager
 import app.k9mail.legacy.message.controller.MessageReference
 import assertk.assertThat
 import assertk.assertions.containsExactlyInAnyOrder
@@ -13,18 +12,17 @@ import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
+import com.fsck.k9.FakeLegacyAccount
 import com.fsck.k9.mail.Address
 import com.fsck.k9.mailstore.LocalMessage
-import com.fsck.k9.mailstore.LocalStore
-import com.fsck.k9.mailstore.LocalStoreProvider
 import com.fsck.k9.mailstore.NotificationMessage
-import kotlin.test.assertNotNull
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import net.thunderbird.core.android.account.LegacyAccountDto
+import net.thunderbird.core.android.account.LegacyAccount
+import net.thunderbird.core.android.account.LegacyAccountManager
 import net.thunderbird.core.common.appConfig.PlatformConfigProvider
 import net.thunderbird.core.preference.GeneralSettings
 import net.thunderbird.core.preference.GeneralSettingsManager
@@ -34,18 +32,22 @@ import net.thunderbird.core.preference.network.NetworkSettings
 import net.thunderbird.core.preference.notification.NotificationPreference
 import net.thunderbird.core.preference.privacy.PrivacySettings
 import net.thunderbird.core.testing.TestClock
+import net.thunderbird.feature.account.AccountIdFactory
+import net.thunderbird.feature.account.storage.profile.AvatarDto
+import net.thunderbird.feature.account.storage.profile.AvatarTypeDto
+import net.thunderbird.feature.account.storage.profile.ProfileDto
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.koin.core.context.GlobalContext.startKoin
 import org.koin.core.context.GlobalContext.stopKoin
 import org.koin.dsl.module
-import org.mockito.kotlin.doAnswer
+import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.stubbing
 
-private const val ACCOUNT_UUID = "00000000-0000-4000-0000-000000000000"
 private const val ACCOUNT_NAME = "Personal"
 private const val ACCOUNT_COLOR = 0xFF112233L.toInt()
 private const val FOLDER_ID = 42L
@@ -53,10 +55,15 @@ private const val TIMESTAMP = 23L
 
 @OptIn(ExperimentalTime::class)
 class NewMailNotificationManagerTest {
-    private val mockedNotificationMessages = mutableListOf<NotificationMessage>()
+    private val accountId = AccountIdFactory.create()
+    private val notificationMessageProvider = FakeNotificationMessageProvider()
     private val account = createAccount()
+    private val accountManager = mock<LegacyAccountManager> {
+        on { findById(accountId) } doReturn account
+    }
+    private val notificationIdRegistry = DefaultAccountNotificationIdRegistry(accountManager)
+    private val notificationDataStore = NotificationDataStore(accountManager, notificationIdRegistry)
     private val notificationContentCreator = mock<NotificationContentCreator>()
-    private val localStoreProvider = createLocalStoreProvider()
     private val generalSettingsManager = FakeGeneralSettingManager()
     private val clock = TestClock(Instant.fromEpochMilliseconds(TIMESTAMP))
     private val generalSettings = GeneralSettings(
@@ -69,28 +76,32 @@ class NewMailNotificationManagerTest {
         privacy = PrivacySettings(),
         platformConfigProvider = FakePlatformConfigProvider(),
     )
+
+    private val singleMessageNotificationDataCreator = SingleMessageNotificationDataCreator(
+        interactionPreferences = mock {
+            on { getConfig() } doReturn InteractionSettings()
+        },
+        notificationPreference = mock { on { getConfig() } doReturn generalSettings.notification },
+        accountManager = accountManager,
+        notificationIdRegistry = notificationIdRegistry,
+    )
+
+    private val summaryNotificationDataCreator = SummaryNotificationDataCreator(
+        singleMessageNotificationDataCreator = singleMessageNotificationDataCreator,
+        generalSettingsManager = mock {
+            on { getConfig() } doReturn generalSettings
+        },
+    )
+
     private val manager = NewMailNotificationManager(
-        notificationContentCreator,
-        createNotificationRepository(),
-        BaseNotificationDataCreator(),
-        SingleMessageNotificationDataCreator(
-            interactionPreferences = mock {
-                on { getConfig() } doReturn InteractionSettings()
-            },
-            notificationPreference = mock { on { getConfig() } doReturn generalSettings.notification },
-        ),
-        SummaryNotificationDataCreator(
-            singleMessageNotificationDataCreator = SingleMessageNotificationDataCreator(
-                interactionPreferences = mock {
-                    on { getConfig() } doReturn InteractionSettings()
-                },
-                notificationPreference = mock { on { getConfig() } doReturn generalSettings.notification },
-            ),
-            generalSettingsManager = mock {
-                on { getConfig() } doReturn generalSettings
-            },
-        ),
-        clock,
+        contentCreator = notificationContentCreator,
+        notificationRepository = createNotificationRepository(),
+        baseNotificationDataCreator = BaseNotificationDataCreator(),
+        singleMessageNotificationDataCreator = singleMessageNotificationDataCreator,
+        summaryNotificationDataCreator = summaryNotificationDataCreator,
+        accountManager = accountManager,
+        notificationIdRegistry = notificationIdRegistry,
+        clock = clock,
     )
 
     @Before
@@ -119,21 +130,22 @@ class NewMailNotificationManagerTest {
             messageUid = "msg-1",
         )
 
-        val result = manager.addNewMailNotification(account, message, silent = false)
+        val result = manager.addNewMailNotification(accountId, message, silent = false)
 
-        assertNotNull(result)
-        assertThat(result.singleNotificationData.first().content).isEqualTo(
-            NotificationContent(
-                messageReference = createMessageReference("msg-1"),
-                sender = Address("irrelevant", "sender"),
-                subject = "subject",
-                preview = "preview",
-                summary = "summary",
-            ),
-        )
-        assertThat(result.summaryNotificationData).isNotNull().isInstanceOf<SummarySingleNotificationData>()
-        val summaryNotificationData = result.summaryNotificationData as SummarySingleNotificationData
-        assertThat(summaryNotificationData.singleNotificationData.isSilent).isFalse()
+        assertThat(result).isNotNull().given { data ->
+            assertThat(data.singleNotificationData.first().content).isEqualTo(
+                NotificationContent(
+                    messageReference = createMessageReference("msg-1"),
+                    sender = Address("irrelevant", "sender"),
+                    subject = "subject",
+                    preview = "preview",
+                    summary = "summary",
+                ),
+            )
+            assertThat(data.summaryNotificationData).isNotNull().isInstanceOf<SummarySingleNotificationData>()
+            val summaryNotificationData = data.summaryNotificationData as SummarySingleNotificationData
+            assertThat(summaryNotificationData.singleNotificationData.isSilent).isFalse()
+        }
     }
 
     @Test
@@ -152,34 +164,35 @@ class NewMailNotificationManagerTest {
             summary = "Zoe Meeting",
             messageUid = "msg-2",
         )
-        manager.addNewMailNotification(account, messageOne, silent = false)
+        manager.addNewMailNotification(accountId, messageOne, silent = false)
         val timestamp = TIMESTAMP + 1000
         clock.changeTimeTo(Instant.fromEpochMilliseconds(timestamp))
 
-        val result = manager.addNewMailNotification(account, messageTwo, silent = false)
+        val result = manager.addNewMailNotification(accountId, messageTwo, silent = false)
 
-        assertNotNull(result)
-        assertThat(result.singleNotificationData.first().content).isEqualTo(
-            NotificationContent(
-                messageReference = createMessageReference("msg-2"),
-                sender = Address("irrelevant", "Zoe"),
-                subject = "Meeting",
-                preview = "We need to talk",
-                summary = "Zoe Meeting",
-            ),
-        )
-        assertThat(result.baseNotificationData.newMessagesCount).isEqualTo(2)
-        assertThat(result.summaryNotificationData).isNotNull().isInstanceOf<SummaryInboxNotificationData>()
-        val summaryNotificationData = result.summaryNotificationData as SummaryInboxNotificationData
-        assertThat(summaryNotificationData.content).isEqualTo(listOf("Zoe Meeting", "Alice Hi Bob"))
-        assertThat(summaryNotificationData.messageReferences).isEqualTo(
-            listOf(
-                createMessageReference("msg-2"),
-                createMessageReference("msg-1"),
-            ),
-        )
-        assertThat(summaryNotificationData.additionalMessagesCount).isEqualTo(0)
-        assertThat(summaryNotificationData.isSilent).isFalse()
+        assertThat(result).isNotNull().given { data ->
+            assertThat(data.singleNotificationData.first().content).isEqualTo(
+                NotificationContent(
+                    messageReference = createMessageReference("msg-2"),
+                    sender = Address("irrelevant", "Zoe"),
+                    subject = "Meeting",
+                    preview = "We need to talk",
+                    summary = "Zoe Meeting",
+                ),
+            )
+            assertThat(data.baseNotificationData.newMessagesCount).isEqualTo(2)
+            assertThat(data.summaryNotificationData).isNotNull().isInstanceOf<SummaryInboxNotificationData>()
+            val summaryNotificationData = data.summaryNotificationData as SummaryInboxNotificationData
+            assertThat(summaryNotificationData.content).isEqualTo(listOf("Zoe Meeting", "Alice Hi Bob"))
+            assertThat(summaryNotificationData.messageReferences).isEqualTo(
+                listOf(
+                    createMessageReference("msg-2"),
+                    createMessageReference("msg-1"),
+                ),
+            )
+            assertThat(summaryNotificationData.additionalMessagesCount).isEqualTo(0)
+            assertThat(summaryNotificationData.isSilent).isFalse()
+        }
     }
 
     @Test
@@ -193,17 +206,18 @@ class NewMailNotificationManagerTest {
             messageUid = "msg-x",
         )
 
-        val result = manager.addNewMailNotification(account, message, silent = false)
+        val result = manager.addNewMailNotification(accountId, message, silent = false)
 
-        assertNotNull(result)
-        val notificationId = NotificationIds.getSingleMessageNotificationId(account, index = 0)
-        assertThat(result.cancelNotificationIds).isEqualTo(listOf(notificationId))
-        assertThat(result.singleNotificationData.first().notificationId).isEqualTo(notificationId)
+        assertThat(result).isNotNull().given { data ->
+            val notificationId = NotificationIds.getSingleMessageNotificationId(account.accountNumber, index = 0)
+            assertThat(data.cancelNotificationIds).isEqualTo(listOf(notificationId))
+            assertThat(data.singleNotificationData.first().notificationId).isEqualTo(notificationId)
+        }
     }
 
     @Test
     fun `remove notification when none was added before should return null`() {
-        val result = manager.removeNewMailNotifications(account, clearNewMessageState = true) {
+        val result = manager.removeNewMailNotifications(accountId, clearNewMessageState = true) {
             listOf(createMessageReference("any"))
         }
 
@@ -219,9 +233,9 @@ class NewMailNotificationManagerTest {
             summary = "Alice Another one",
             messageUid = "msg-x",
         )
-        manager.addNewMailNotification(account, message, silent = false)
+        manager.addNewMailNotification(accountId, message, silent = false)
 
-        val result = manager.removeNewMailNotifications(account, clearNewMessageState = true) {
+        val result = manager.removeNewMailNotifications(accountId, clearNewMessageState = true) {
             listOf(createMessageReference("untracked"))
         }
 
@@ -237,16 +251,16 @@ class NewMailNotificationManagerTest {
             summary = "Alice Hello",
             messageUid = "msg-1",
         )
-        manager.addNewMailNotification(account, message, silent = false)
+        manager.addNewMailNotification(accountId, message, silent = false)
 
-        val result = manager.removeNewMailNotifications(account, clearNewMessageState = true) {
+        val result = manager.removeNewMailNotifications(accountId, clearNewMessageState = true) {
             listOf(createMessageReference("msg-1"))
         }
 
-        assertNotNull(result) { data ->
+        assertThat(result).isNotNull().given { data ->
             assertThat(data.cancelNotificationIds).containsExactlyInAnyOrder(
-                NotificationIds.getNewMailSummaryNotificationId(account),
-                NotificationIds.getSingleMessageNotificationId(account, 0),
+                NotificationIds.getNewMailSummaryNotificationId(account.accountNumber),
+                NotificationIds.getSingleMessageNotificationId(account.accountNumber, 0),
             )
             assertThat(data.singleNotificationData).isEmpty()
             assertThat(data.summaryNotificationData).isNull()
@@ -262,7 +276,7 @@ class NewMailNotificationManagerTest {
             summary = "Alice One",
             messageUid = "msg-1",
         )
-        manager.addNewMailNotification(account, messageOne, silent = false)
+        manager.addNewMailNotification(accountId, messageOne, silent = false)
         val messageTwo = addMessageToNotificationContentCreator(
             sender = "Alice",
             subject = "Two",
@@ -270,9 +284,8 @@ class NewMailNotificationManagerTest {
             summary = "Alice Two",
             messageUid = "msg-2",
         )
-        val dataTwo = manager.addNewMailNotification(account, messageTwo, silent = true)
-        assertNotNull(dataTwo)
-        val notificationIdTwo = dataTwo.singleNotificationData.first().notificationId
+        val dataTwo = manager.addNewMailNotification(accountId, messageTwo, silent = true)
+        val notificationIdTwo = checkNotNull(dataTwo).singleNotificationData.first().notificationId
         val messageThree = addMessageToNotificationContentCreator(
             sender = "Alice",
             subject = "Three",
@@ -280,13 +293,13 @@ class NewMailNotificationManagerTest {
             summary = "Alice Three",
             messageUid = "msg-3",
         )
-        manager.addNewMailNotification(account, messageThree, silent = true)
+        manager.addNewMailNotification(accountId, messageThree, silent = true)
 
-        val result = manager.removeNewMailNotifications(account, clearNewMessageState = true) {
+        val result = manager.removeNewMailNotifications(accountId, clearNewMessageState = true) {
             listOf(createMessageReference("msg-2"))
         }
 
-        assertNotNull(result) { data ->
+        assertThat(result).isNotNull().given { data ->
             assertThat(data.cancelNotificationIds).isEqualTo(listOf(notificationIdTwo))
             assertThat(data.singleNotificationData).isEmpty()
             assertThat(data.baseNotificationData.newMessagesCount).isEqualTo(2)
@@ -311,14 +324,14 @@ class NewMailNotificationManagerTest {
             summary = "Alice Another one",
             messageUid = "msg-restore",
         )
-        manager.addNewMailNotification(account, message, silent = false)
+        manager.addNewMailNotification(accountId, message, silent = false)
         addMaximumNumberOfNotifications()
 
-        val result = manager.removeNewMailNotifications(account, clearNewMessageState = true) {
+        val result = manager.removeNewMailNotifications(accountId, clearNewMessageState = true) {
             listOf(createMessageReference("msg-1"))
         }
 
-        assertNotNull(result) { data ->
+        assertThat(result).isNotNull().given { data ->
             assertThat(data.cancelNotificationIds).hasSize(1)
             assertThat(data.baseNotificationData.newMessagesCount)
                 .isEqualTo(MAX_NUMBER_OF_NEW_MESSAGE_NOTIFICATIONS)
@@ -340,7 +353,7 @@ class NewMailNotificationManagerTest {
 
     @Test
     fun `restore notifications without persisted notifications`() {
-        val result = manager.restoreNewMailNotifications(account)
+        val result = manager.restoreNewMailNotifications(accountId)
 
         assertThat(result).isNull()
     }
@@ -357,9 +370,9 @@ class NewMailNotificationManagerTest {
             messageUid = "uid-1",
         )
 
-        val result = manager.restoreNewMailNotifications(account)
+        val result = manager.restoreNewMailNotifications(accountId)
 
-        assertNotNull(result) { data ->
+        assertThat(result).isNotNull().given { data ->
             assertThat(data.cancelNotificationIds).isEmpty()
             assertThat(data.baseNotificationData.newMessagesCount).isEqualTo(1)
             assertThat(data.singleNotificationData).hasSize(1)
@@ -406,9 +419,9 @@ class NewMailNotificationManagerTest {
             messageUid = "uid-inactive",
         )
 
-        val result = manager.restoreNewMailNotifications(account)
+        val result = manager.restoreNewMailNotifications(accountId)
 
-        assertNotNull(result) { data ->
+        assertThat(result).isNotNull().given { data ->
             assertThat(data.cancelNotificationIds).isEmpty()
             assertThat(data.baseNotificationData.newMessagesCount)
                 .isEqualTo(MAX_NUMBER_OF_NEW_MESSAGE_NOTIFICATIONS + 1)
@@ -421,11 +434,23 @@ class NewMailNotificationManagerTest {
         }
     }
 
-    private fun createAccount(): LegacyAccountDto {
-        return LegacyAccountDto(ACCOUNT_UUID).apply {
-            name = ACCOUNT_NAME
-            chipColor = ACCOUNT_COLOR
-        }
+    private fun createAccount(): LegacyAccount {
+        return FakeLegacyAccount.ACCOUNT.copy(
+            id = accountId,
+            name = ACCOUNT_NAME,
+            profile = ProfileDto(
+                id = accountId,
+                name = ACCOUNT_NAME,
+                color = ACCOUNT_COLOR,
+                avatar = AvatarDto(
+                    accountId = accountId,
+                    avatarType = AvatarTypeDto.MONOGRAM,
+                    avatarMonogram = "PE",
+                    avatarImageUri = null,
+                    avatarIconName = null,
+                ),
+            ),
+        )
     }
 
     private fun addMaximumNumberOfNotifications() {
@@ -437,7 +462,7 @@ class NewMailNotificationManagerTest {
                 summary = "summary",
                 messageUid = "msg-$index",
             )
-            manager.addNewMailNotification(account, message, silent = true)
+            manager.addNewMailNotification(accountId, message, silent = true)
         }
     }
 
@@ -451,7 +476,7 @@ class NewMailNotificationManagerTest {
         val message = mock<LocalMessage>()
 
         stubbing(notificationContentCreator) {
-            on { createFromMessage(account, message) } doReturn
+            on { createFromMessage(eq(message), any()) } doReturn
                 NotificationContent(
                     messageReference = createMessageReference(messageUid),
                     sender = Address("irrelevant", sender),
@@ -476,13 +501,13 @@ class NewMailNotificationManagerTest {
         val message = mock<LocalMessage>()
 
         val notificationMessage = NotificationMessage(message, notificationId, timestamp)
-        mockedNotificationMessages.add(notificationMessage)
+        notificationMessageProvider.add(accountId, notificationMessage)
 
         stubbing(notificationContentCreator) {
-            on { createFromMessage(account, message) } doReturn
+            on { createFromMessage(any(), any()) } doReturn
                 NotificationContent(
                     messageReference = createMessageReference(messageUid),
-                    Address("irrelevant", sender),
+                    sender = Address("irrelevant", sender),
                     subject,
                     preview,
                     summary,
@@ -505,36 +530,18 @@ class NewMailNotificationManagerTest {
     }
 
     private fun createMessageReference(messageUid: String): MessageReference {
-        return MessageReference(ACCOUNT_UUID, FOLDER_ID, messageUid)
-    }
-
-    private fun createLocalStoreProvider(): LocalStoreProvider {
-        val localStore = createLocalStore()
-        return mock {
-            on { getInstance(account) } doReturn localStore
-        }
-    }
-
-    private fun createLocalStore(): LocalStore {
-        return mock {
-            on { notificationMessages } doAnswer { mockedNotificationMessages.toList() }
-        }
+        return MessageReference(accountId, FOLDER_ID, messageUid)
     }
 
     private fun createNotificationRepository(): NotificationRepository {
-        val notificationStoreProvider = mock<NotificationStoreProvider> {
-            on { getNotificationStore(account) } doReturn mock()
-        }
-        val messageStoreManager = mock<MessageStoreManager> {
-            on { getMessageStore(account) } doReturn mock()
-        }
-
         return NotificationRepository(
-            notificationStoreProvider,
-            localStoreProvider,
-            messageStoreManager,
-            notificationContentCreator,
-            generalSettingsManager,
+            notificationStoreProvider = FakeNotificationStoreProvider(),
+            notificationMessageProvider = notificationMessageProvider,
+            newMessageStateStore = FakeNewMessageStateStore(),
+            notificationContentCreator = notificationContentCreator,
+            generalSettingsManager = generalSettingsManager,
+            notificationDataStore = notificationDataStore,
+            accountManager = accountManager,
         )
     }
 

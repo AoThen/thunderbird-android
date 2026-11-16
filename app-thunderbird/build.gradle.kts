@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.dependency.guard)
     alias(libs.plugins.tb.app.badging)
     alias(libs.plugins.tb.app.versioning)
+    alias(libs.plugins.tb.baselineprofile.consumer.app)
 }
 
 val testCoverageEnabled = providers
@@ -17,7 +18,7 @@ android {
         testApplicationId = "net.thunderbird.android.tests"
 
         versionCode = 4
-        versionName = "25.0"
+        versionName = "27.0"
 
         buildConfigField("String", "CLIENT_INFO_APP_NAME", "\"Thunderbird for Android\"")
 
@@ -95,14 +96,14 @@ android {
     }
 
     buildTypes {
-        val isCI = providers.gradleProperty("ci")
+        val minify = providers.gradleProperty("minify")
             .map(String::toBoolean)
-            .orElse(false)
+            .orElse(true)
         release {
             signingConfig = signingConfigs.getByName("release")
 
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = minify.get()
+            isShrinkResources = minify.get()
             isDebuggable = false
 
             proguardFiles(
@@ -121,8 +122,8 @@ android {
             applicationIdSuffix = ".beta"
             versionNameSuffix = "b0"
 
-            isMinifyEnabled = isCI.get()
-            isShrinkResources = isCI.get()
+            isMinifyEnabled = minify.get()
+            isShrinkResources = minify.get()
             isDebuggable = false
 
             matchingFallbacks += listOf("release")
@@ -143,8 +144,8 @@ android {
             applicationIdSuffix = ".daily"
             versionNameSuffix = "a1"
 
-            isMinifyEnabled = isCI.get()
-            isShrinkResources = isCI.get()
+            isMinifyEnabled = minify.get()
+            isShrinkResources = minify.get()
             isDebuggable = false
 
             matchingFallbacks += listOf("release")
@@ -280,6 +281,8 @@ dependencies {
     testImplementation(projects.feature.changelog.internal)
 
     testImplementation(libs.appauth)
+
+    baselineProfile(projects.appThunderbird.benchmarks)
 }
 
 dependencyGuard {

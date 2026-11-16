@@ -1,15 +1,15 @@
 package net.thunderbird.feature.mail.message.list.internal.ui.state.sideeffect.ui
 
+import assertk.assertFailure
 import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
 import assertk.assertions.isInstanceOf
 import kotlin.test.Test
-import kotlin.test.assertFailsWith
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.test.runTest
+import net.thunderbird.components.core.logging.testing.TestLogger
 import net.thunderbird.core.common.state.sideeffect.StateSideEffectHandler
-import net.thunderbird.core.logging.testing.TestLogger
 import net.thunderbird.feature.mail.message.list.internal.fakes.RecordingSuspendFunction
 import net.thunderbird.feature.mail.message.list.internal.ui.state.sideeffect.BaseSideEffectHandlerTest
 import net.thunderbird.feature.mail.message.list.ui.effect.MessageListEffect
@@ -98,13 +98,13 @@ class OpenMessageSideEffectTest : BaseSideEffectHandlerTest() {
         val testSubject = createTestSubject()
 
         // Act & Assert
-        assertFailsWith<IllegalArgumentException> {
+        assertFailure {
             testSubject.handle(
                 event = MessageItemEvent.OnMessageClick(message),
                 oldState = createLoadedMessagesState(),
                 newState = createLoadedMessagesState(activeMessage = null),
             )
-        }
+        }.isInstanceOf<IllegalArgumentException>()
     }
 
     @Test

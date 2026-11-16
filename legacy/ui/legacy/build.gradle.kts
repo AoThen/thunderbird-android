@@ -20,7 +20,6 @@ dependencies {
     implementation(projects.feature.changelog.internal)
 
     implementation(projects.core.featureflag)
-    implementation(projects.core.logging.api)
     implementation(projects.core.ui.compose.common)
     implementation(projects.core.ui.theme.api)
     implementation(projects.feature.launcher)
@@ -71,7 +70,7 @@ dependencies {
 
     implementation(libs.commons.io)
     implementation(libs.androidx.core.ktx)
-    implementation(libs.jcip.annotations)
+    implementation(libs.androidx.annotation)
     implementation(libs.mime4j.core)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
@@ -81,7 +80,7 @@ dependencies {
     implementation(libs.glide)
     annotationProcessor(libs.glide.compiler)
 
-    testImplementation(projects.core.logging.testing)
+    testImplementation(projects.core.android.account.fake)
     testImplementation(projects.feature.account.fake)
 
     // This is necessary as RecipientPresenterTest fails to inject

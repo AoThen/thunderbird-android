@@ -13,6 +13,9 @@ android {
     }
 }
 
+// Unit tests depend on code from the debug source set
+disableReleaseUnitTests()
+
 dependencies {
     implementation(projects.core.common)
     implementation(projects.core.validation)
@@ -21,6 +24,7 @@ dependencies {
 
     implementation(projects.mail.common)
 
+    implementation(projects.feature.account.api)
     implementation(projects.feature.account.common)
     implementation(projects.feature.account.oauth)
     implementation(projects.feature.account.server.settings)
